@@ -5,13 +5,13 @@ import Data.Time.Calendar -- Para trabalhar com datas
 -- Definição dos Tipos Algébricos
 
 data Status = Pendente | Concluída 
-   deriving (Show , Eq)
+   deriving (Show , Eq, Read)
 
 data Prioridade = Baixa | Media | Alta 
-   deriving (Show, Eq, Ord)
+   deriving (Show, Eq, Ord, Read)
 
 data Categoria = Trabalho | Estudo | Pessoal | Outro 
-   deriving (Show, Eq)
+   deriving (Show, Eq, Read)
 
 data Tarefa = Tarefa
   { idTarefa    :: Int
@@ -21,7 +21,7 @@ data Tarefa = Tarefa
   , categoria   :: Categoria
   , prazo       :: Maybe Day
   , tags        :: [String]
-  } deriving (Eq)
+  } deriving (Eq, Read)
 
 -- Instância personalizada de Show para imprimir as tarefas de forma mais bonita
 instance Show Tarefa where
@@ -36,4 +36,3 @@ instance Show Tarefa where
     , "Tags: " ++ unwords (tags t)
     , "===================="
     ]
-    

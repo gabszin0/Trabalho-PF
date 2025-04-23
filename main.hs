@@ -1,135 +1,16 @@
-{-}
 module Main where
 
+
 import Data.Time.Calendar
-import Data.Time.Format (formatTime, defaultTimeLocale)
-import Data.IORef
+import Tipos
+import Funcoes
 import System.IO
-import Tipos
-import Funcoes
-
-main :: IO ()
-main = do
-  hSetBuffering stdout NoBuffering
-  tarefasRef <- newIORef [] -- Lista vazia de início
-  menu tarefasRef
-
-menu :: IORef [Tarefa] -> IO ()
-menu tarefasRef = do
-  putStrLn "\n==== Menu ===="
-  putStrLn "1. Adicionar tarefa"
-  putStrLn "2. Remover tarefa"
-  putStrLn "3. Marcar como concluída"
-  putStrLn "4. Relatório de tarefas"
-  putStrLn "5. Sair"
-  putStr "Escolha uma opção: "
-  opcao <- getLine
-  case opcao of
-    "1" -> adicionarInterativo tarefasRef
-    "2" -> removerInterativo tarefasRef
-    "3" -> concluirInterativo tarefasRef
-    "4" -> do
-         lista <- readIORef tarefasRef
-         putStrLn $ gerarRelatorio lista
-         menu tarefasRef
-    "5" -> putStrLn "Saindo..."
-    _   -> putStrLn "Opção inválida." >> menu tarefasRef
-
-adicionarInterativo :: IORef [Tarefa] -> IO ()
-adicionarInterativo ref = do
-  putStr "ID: "
-  idStr <- getLine
-  putStr "Descrição: "
-  desc <- getLine
-
-  putStrLn "Status (1 = Pendente, 2 = Concluída): "
-  statusStr <- getLine
-  let status' = case statusStr of
-                  "2" -> Concluída
-                  _   -> Pendente
-
-  putStrLn "Prioridade (1 = Alta, 2 = Média, 3 = Baixa): "
-  prioridadeStr <- getLine
-  let prioridade' = case prioridadeStr of
-                      "1" -> Alta
-                      "3" -> Baixa
-                      _   -> Media
-
-  putStrLn "Categoria (1 = Trabalho, 2 = Estudo, 3 = Pessoal, 4 = Outro): "
-  categoriaStr <- getLine
-  let categoria' = case categoriaStr of
-                     "1" -> Trabalho
-                     "2" -> Estudo
-                     "3" -> Pessoal
-                     _   -> Outro
-
-  putStr "Prazo (formato AAAA-MM-DD ou deixe vazio): "
-  prazoStr <- getLine
-  let prazo' = if null prazoStr then Nothing else Just (read prazoStr :: Day)
-
-  putStr "Tags (separadas por vírgula): "
-  tagsStr <- getLine
-  let tags' = map trim (splitByComma tagsStr)
-
-  let novaTarefa = Tarefa 
-        { idTarefa = read idStr
-        , descricao = desc
-        , status = status'
-        , prioridade = prioridade'
-        , categoria = categoria'
-        , prazo = prazo'
-        , tags = tags' }
-
-  lista <- readIORef ref
-  case adicionarTarefa novaTarefa lista of
-    Left erro -> putStrLn erro
-    Right novaLista -> writeIORef ref novaLista >> putStrLn "Tarefa adicionada com sucesso!"
-  menu ref
-
-removerInterativo :: IORef [Tarefa] -> IO ()
-removerInterativo ref = do
-  putStr "ID da tarefa para remover: "
-  idStr <- getLine
-  lista <- readIORef ref
-  case removerTarefa (read idStr) lista of
-    Left erro -> putStrLn erro
-    Right novaLista -> writeIORef ref novaLista >> putStrLn "Tarefa removida!"
-  menu ref
-
-concluirInterativo :: IORef [Tarefa] -> IO ()
-concluirInterativo ref = do
-  putStr "ID da tarefa para concluir: "
-  idStr <- getLine
-  lista <- readIORef ref
-  case marcarConcluida (read idStr) lista of
-    Left erro -> putStrLn erro
-    Right novaLista -> writeIORef ref novaLista >> putStrLn "Tarefa marcada como concluída!"
-  menu ref
-
-
-
--- Utilitários
-
-splitByComma :: String -> [String]
-splitByComma s = case break (== ',') s of
-  (a, ',':rest) -> a : splitByComma rest
-  (a, "")       -> [a]
-
-trim :: String -> String
-trim = f . f
-  where f = reverse . dropWhile (== ' ')
-
--}
-
-module Main where
-
-import Data.Time.Calendar
-import Tipos
-import Funcoes
 
 -- Função principal de execução do sistema de tarefas
 main :: IO ()
-main = loop []
+main = do
+  hSetBuffering stdout NoBuffering -- Desativa o buffering de saída
+  loop []
 
 -- Loop principal que mantém o programa executando
 loop :: [Tarefa] -> IO ()
@@ -143,7 +24,9 @@ loop tarefas = do
   putStrLn "4. Marcar Tarefa como Concluída"
   putStrLn "5. Remover Tarefa"
   putStrLn "6. Relatório de tarefas"
-  putStrLn "7. Sair"
+  putStrLn "7. Verificar Atrasos"
+  putStrLn "8. Buscar por palavra-chave"
+  putStrLn "9. Sair"
   putStr "Escolha uma opção: "
   opcao <- getLine
   case opcao of
@@ -172,7 +55,7 @@ loop tarefas = do
       loop tarefas
 
     "4" -> do
-      putStr "Informe o ID da tarefa que deseja marcar como concluída: "
+      putStrLn "Informe o ID da tarefa que deseja marcar como concluída: "
       idStr <- getLine
       let idNum = read idStr :: Int
       case marcarConcluida idNum tarefas of
@@ -180,7 +63,7 @@ loop tarefas = do
         Right novaLista -> putStrLn "Tarefa marcada como concluída." >> loop novaLista
 
     "5" -> do
-      putStr "Informe o ID da tarefa que deseja remover: "
+      putStrLn "Informe o ID da tarefa que deseja remover: "
       idStr <- getLine
       let idNum = read idStr :: Int
       case removerTarefa idNum tarefas of
@@ -193,7 +76,21 @@ loop tarefas = do
       putStrLn relatorio
       loop tarefas
 
-    "7" -> putStrLn "Saindo..."
+    "7" -> do
+      putStrLn "Data atual (yyyy-mm-dd): "; dataStr <- getLine
+      let atrasadas = verificarAtrasos tarefas (read dataStr :: Day)
+      putStrLn "Tarefas em atraso:"
+      mapM_ print atrasadas
+      loop tarefas
+
+    "8" -> do
+      putStrLn "Digite a palavra-chave: "; palavra <- getLine
+      let encontradas = buscarPorPalavraChave palavra tarefas
+      putStrLn "Tarefas encontradas:"
+      mapM_ print encontradas
+      loop tarefas
+
+    "9" -> putStrLn "Saindo..."
     _   -> putStrLn "Opção inválida." >> loop tarefas
 
 -- Função para criar uma tarefa interativamente via terminal
