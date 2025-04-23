@@ -1,6 +1,6 @@
 module Main where
 
-
+import Persistencia
 import Data.Time.Calendar
 import Tipos
 import Funcoes
@@ -11,6 +11,20 @@ main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering -- Desativa o buffering de saída
   loop []
+
+-- Função para exibir uma tarefa formatada
+exibirTarefa :: Tarefa -> String
+exibirTarefa t = unlines
+  [ "===================="
+  , "ID: " ++ show (idTarefa t)
+  , "Descrição: " ++ descricao t
+  , "Status: " ++ show (status t)
+  , "Prioridade: " ++ show (prioridade t)
+  , "Categoria: " ++ show (categoria t)
+  , "Prazo: " ++ maybe "Sem prazo" show (prazo t)
+  , "Tags: " ++ unwords (tags t)
+  , "===================="
+  ]
 
 -- Loop principal que mantém o programa executando
 loop :: [Tarefa] -> IO ()
@@ -27,6 +41,8 @@ loop tarefas = do
   putStrLn "7. Verificar Atrasos"
   putStrLn "8. Buscar por palavra-chave"
   putStrLn "9. Sair"
+  putStrLn "+. Para Salvar tarefas em arquivo"
+  putStrLn "!. Para Carregar tarefas de arquivo"
   putStr "Escolha uma opção: "
   opcao <- getLine
   case opcao of
@@ -38,7 +54,7 @@ loop tarefas = do
 
     "2" -> do
       putStrLn "Tarefas cadastradas:"
-      mapM_ print tarefas
+      mapM_ (putStrLn . exibirTarefa) tarefas
       loop tarefas
 
     "3" -> do
@@ -51,7 +67,7 @@ loop tarefas = do
                           _       -> Media
       let listaFiltrada = listarPorPrioridade prioridade tarefas
       putStrLn "Tarefas com a prioridade informada:"
-      mapM_ print listaFiltrada
+      mapM_ (putStrLn . exibirTarefa) listaFiltrada
       loop tarefas
 
     "4" -> do
@@ -80,18 +96,29 @@ loop tarefas = do
       putStrLn "Data atual (yyyy-mm-dd): "; dataStr <- getLine
       let atrasadas = verificarAtrasos tarefas (read dataStr :: Day)
       putStrLn "Tarefas em atraso:"
-      mapM_ print atrasadas
+      mapM_ (putStrLn . exibirTarefa) atrasadas
       loop tarefas
 
     "8" -> do
       putStrLn "Digite a palavra-chave: "; palavra <- getLine
       let encontradas = buscarPorPalavraChave palavra tarefas
       putStrLn "Tarefas encontradas:"
-      mapM_ print encontradas
+      mapM_ (putStrLn . exibirTarefa) encontradas
       loop tarefas
+
+    "+" -> do
+      salvarEmArquivo "tarefas.txt" tarefas
+      putStrLn "Tarefas salvas com sucesso!"
+      loop tarefas
+
+    "!" -> do
+      novasTarefas <- carregarDeArquivo "tarefas.txt"
+      putStrLn "Tarefas carregadas com sucesso!"
+      loop novasTarefas
 
     "9" -> putStrLn "Saindo..."
     _   -> putStrLn "Opção inválida." >> loop tarefas
+
 
 -- Função para criar uma tarefa interativamente via terminal
 criarTarefaInteractiva :: [Tarefa] -> IO Tarefa
